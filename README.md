@@ -364,54 +364,29 @@ Après ça on peux se connecter.
 [Dockerfile](tp9/tp9-2/Dockerfile)
 
 ```dockerfile
-# TP cours de DevOps
+FROM ubuntu:latest
 
-<br>
+# Quelques métadonnées
+LABEL maintainer="Alvin <alvinkita@edu.igencia.com>"
+LABEL description="Application pour TP9-2"
+LABEL version="0.1"
 
-## Sommaire
+# Installation de nginx
+RUN apt-get update && \
+    apt-get install -y nginx && \
+    apt-get clean
 
-- [TP cours de DevOps](#tp-cours-de-devops)
-  - [TP 5](#tp-5)
-  - [TP 5-2](#tp-5-2)
-  - [TP 6](#tp-6)
-  - [TP 7](#tp-7)
-  - [TP 8](#tp-8)
-  - [TP 9](#tp-9)
+# Création du dossier de travail
+WORKDIR /var/www/html
 
+# Copie des fichiers de l'application
+COPY webapp/ .
 
+# Expose port 80
+EXPOSE 80
 
-<br>
-
-
-## TP 5
-
-**Objectif** : d&ployer une application multiconteneurs
-
-Mise en place d'un grafana avec un prometheus :
-
-[Dockerfile](tp5/docker-compose.yml)
-
-```yaml
-services:
-  grafana:
-    image: grafana/grafana-enterprise
-    container_name: grafana
-    restart: unless-stopped
-    user: '0'
-    ports:
-     - '3000:3000'
-    volumes:
-     - 'data:/var/lib/grafana'
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    restart: unless-stopped
-    ports:
-     - '9090:9090'
-    volumes:
-     - 'data:/prometheus'
-volumes:
-  data: {}
+# Start
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
 Puis lancement de l'application :
