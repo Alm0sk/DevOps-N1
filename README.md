@@ -5,10 +5,10 @@
 ## Sommaire
 
 - [TP cours de DevOps](#tp-cours-de-devops)
-  - [TP 5](##tp-5)
-  - [TP 5-2](##tp-5-2)
-  - [TP 6](##tp-6)
-  - [TP 7](##tp-7)
+  - [TP 5](#tp-5)
+  - [TP 5-2](#tp-5-2)
+  - [TP 6](#tp-6)
+  - [TP 7](#tp-7)
 
 <br>
 
