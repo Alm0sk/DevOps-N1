@@ -6,7 +6,9 @@
 
 - [TP cours de DevOps](#tp-cours-de-devops)
   - [TP 5](##tp-5)
+  - [TP 5-2](##tp-5-2)
   - [TP 6](##tp-6)
+  - [TP 7](##tp-7)
 
 <br>
 
@@ -52,6 +54,59 @@ On peut ensuite se connecter sur le port 3000 pour grafana et sur le port 9090 p
 ![lancement de l'application](media/TP5-launch.png)
 
 ![Accès au URL](media/TP5-final.png)
+
+<br>
+
+## TP 5-2
+
+*En relisant l'énoncé j'ai l'impression qu'il étais attendu d'appeler un un code avec docker*
+
+J'ai donc mis en place une application simple en python fastapi qui renvoie un "Hello World" sur le port 8000
+
+[Dockerfile](tp5-2/Dockerfile)
+
+```dockerfile
+FROM python:3.13.3-alpine3.21
+
+# Création de l'utilisateur qui executera l'application pour que ce ne soit pas root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Installation des dépendances depuis requirements.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt && \
+    rm -rf /root/.cache
+
+# Copie du code source dans le conteneur
+COPY app /app
+WORKDIR /app
+
+# Exposition du port 8000
+EXPOSE 8000
+
+# Passage de l'utilisateur root à appuser pour plus de sécurité
+USER appuser
+
+# Commande pour démarrer l'application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Je peux maintenant construire l'image, la lancer et vérifié que les appels API fonctionnent
+
+```bash
+docker build -t fastapi-app .
+```
+```bash
+docker run -p 8000:8000 -d --name fastapi_app fastapi
+```
+```bash
+curl http://localhost:8000/
+````
+
+```bash
+docker logs fastapi_app
+```
+
+![Lancement de l'app](media/TP5-2-launch.png)
 
 <br>
 
