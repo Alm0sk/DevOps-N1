@@ -9,6 +9,7 @@
   - [TP 5-2](#tp-5-2)
   - [TP 6](#tp-6)
   - [TP 7](#tp-7)
+  - [TP 8](#tp-8)
 
 <br>
 
@@ -167,12 +168,92 @@ On peux ensuite se connecter au wordpress sur le port 8080
 
 ## TP 7
 
+**Objectif** : Déployer un conteneur de base de données et sécurisé ces données
+
+J'ai mis en place un docker-compose.yml en prenant exemple sur la documentation docker hub de mysql
+<https://hub.docker.com/_/mysql> avec une utilisation de secrets docker pour stocker les mots de passes
+
+[Dockerfile](tp7/docker-compose.yml)
+
+```yaml
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_user_password
+      MYSQL_DATABASE: database
+      MYSQL_USER: user
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - db_network
+    restart: unless-stopped
+    secrets:
+      - mysql_root_password
+      - mysql_user_password
+
+volumes:
+  db_data:
+
+networks:
+  db_network:
+
+secrets:
+  mysql_root_password:
+    external: true
+  mysql_user_password:
+    external: true
+```
+
+Et j'ai mis en place les secrets avec docker swarm:
+
+```bash
+docker swarm init
+```
+
+```bash
+echo "IncroyableMDP" | docker secret create mysql_root_password -
+```
+
+```bash
+echo "BasiqueMDP" | docker secret create mysql_user_password -
+```
+
+On peux vérifier que les secrets sont bien créés avec la commande suivante :
+
+```bash
+docker secret ls
+```
+
+Et enfin on peut lancer l'application :
+
+```bash
+docker stack deploy -c docker-compose.yml mysql_tp7
+```
+
+On pourrait pousser les bonnes pratiques en mettant en place un vault pour stocker les secrets couplé avec ansible. Mais le TP n'a pas l'air de demander ça, et doit durer 15 minutes.
+
+Et pour verifier que tout fonctionne, on peux ce connecter où verifier les logs du conteneur :
+
+```bash
+docker exec -it mysql_tp7_db mysql -u root -p
+```
+
+```bash
+docker logs mysql_tp7_db
+```
+<br>
+
+## TP 8
+
 **Objectif** : Déployer un conteneur de base de données et
-sécurisé ces données
+sécurisé ces données (avec un .env)
 
 J'ai mis en place un docker-compose.yml en prenant exemple sur la documentation docker hub de mysql
 <https://hub.docker.com/_/mysql>
-[Dockerfile](tp7/docker-compose.yml)
+[Dockerfile](tp8/docker-compose.yml)
 
 ```yaml
 services:
@@ -199,7 +280,7 @@ networks:
 
 J'ai également mis en place un fichier .env pour stocker les variables d'environnement
 
-[fichier .env](tp7/.env)
+[fichier .env](tp8/.env)
 
 ```bash
 # Je laisse le fichier dans le repo, mais c'est une mauvaise pratique de le faire habituellement.
@@ -215,7 +296,7 @@ Puis lancement de l'application :
 docker-compose up -d
 ```
 
-![Lancement de l'app](media/TP7-launch.png)
+![Lancement de l'app](media/TP8-launch.png)
 
 On peux ensuite se connecter à la base de données avec le client mysql
 
@@ -223,4 +304,4 @@ On peux ensuite se connecter à la base de données avec le client mysql
 docker exec -it mysql_db mysql -u root -p
 ```
 
-![Connexion à la base de donnée](media/TP7-final.png)
+![Connexion à la base de donnée](media/TP8-final.png)
