@@ -1,0 +1,20 @@
+services:
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    restart: unless-stopped
+    user: '0'
+    ports:
+     - '3000:3000'
+    volumes:
+     - 'data:/var/lib/grafana'
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+     - '9090:9090'
+    volumes:
+     - 'data:/prometheus'
+volumes:
+  data: {}
