@@ -13,6 +13,8 @@
   - [TP 9](#tp-9)
     - [TP 9-1 Dockerfile basique](#tp-9-1-dockerfile-basique)
     - [TP 9-2 Dockerfile avec gestion des fichiers et métadonnées](#tp-9-2-dockerfile-avec-gestion-des-fichiers-et-métadonnées)
+    - [TP 9-3 Dockerfile avec environnement et persistance](#tp-9-3-dockerfile-avec-environnement-et-persistance)
+  - [TP 10](#tp-10)
 
 
 
@@ -67,7 +69,8 @@ docker-compose down
 pour le supprimer :
 
 ```bash
-docker rmi grafana/grafana-enterprise:latest prom/prometheus:latest
+docker rmi grafana/grafana-enterprise:latest prom/prometheus:latest && \
+docker volume rm tp5_data
 ```
 
 #### Démonstration
@@ -208,6 +211,12 @@ pour l'arrêter :
 docker-compose down
 ```
 
+pour le supprimer :
+
+```bash
+docker volume rm tp6_db tp6_wordpress
+```
+
 #### Démonstration
 
 On peux ensuite se connecter au wordpress sur le port 8080
@@ -310,7 +319,7 @@ pour l'arrêter :
 ```bash
 docker stack rm mysql_tp7
 ```
-pour le supprimer :
+pour supprimer les secrets :
 
 ```bash
 docker secret rm mysql_root_password && docker secret rm mysql_user_password
@@ -318,6 +327,10 @@ docker secret rm mysql_root_password && docker secret rm mysql_user_password
 
 ```bash
 docker swarm leave --force
+```
+
+```bash
+docker volume rm mysql_tp7_db_data
 ```
 
 #### Remarque
@@ -391,6 +404,12 @@ pour l'arrêter :
 docker-compose down
 ```
 
+pour le supprimer :
+
+```bash
+docker rmi mysql:8.0 && docker volume rm tp8_db_data
+```
+
 #### Démonstration
 
 ![Lancement de l'app](media/TP8-launch.png)
@@ -408,6 +427,8 @@ docker exec -it mysql_db mysql -u root -p
 ## TP 9
 
 **Objectif** : Plusieurs Dockerfile à mettre en place
+
+<hr>
 
 ### TP 9-1 Dockerfile basique
 
@@ -446,20 +467,22 @@ docker build -t tp9-1 .
 Et pour lancer le conteneur :
 
 ```bash
-docker run -d -p 80:80 tp9-1
+docker run -d -p 80:80 --name tp9-1-app tp9-1
 ```
 
 Pour l'arrêter :
 
 ```bash
-docker stop tp9-1
+docker stop tp9-1-app
 ```
 
 Pour le supprimer :
 
 ```bash
-docker rm tp9-1
+docker rm tp9-1-app && docker rmi tp9-1
 ```
+
+#### Démonstration
 
 Après ça on peux se connecter.
 
@@ -470,6 +493,8 @@ Après ça on peux se connecter.
 ### TP 9-2 Dockerfile avec gestion des fichiers et métadonnées
 
 **Objectif** : Ajouter des la complxité avec une base web
+
+#### Mise en place
 
 [Dockerfile](tp9/tp9-2/Dockerfile)
 
@@ -501,6 +526,10 @@ CMD ["nginx", "-g", "daemon off;"]
 
 avec un dossier webapp contenant un index.html avec un page (très) simple
 
+#### Lancement de l'application
+
+```bash
+
 pour lancer l'application :
 
 ```bash
@@ -508,8 +537,22 @@ docker build -t tp9-2 .
 ```
 
 ```bash
-docker run -d -p 80:80 tp9-2
+docker run -d -p 80:80 --name tp9-2-app tp9-2
 ```
+
+Pour l'arrêter :
+
+```bash
+docker stop tp9-2-app
+```
+
+Pour le supprimer :
+
+```bash
+docker rm tp9-2-app && docker rmi tp9-2
+```
+
+#### Démonstration
 
 Le résultat ci dessous avec un test curl :
 
@@ -522,6 +565,8 @@ Le résultat ci dessous avec un test curl :
 **Objectif** : Déployer une application Python Flask utilisant une variable d'environnement pour sa configuration, avec un dossier pour la persistance des logs
 
 *Réalisé à l'aide de la documentation de Flask :* https://flask.palletsprojects.com/en/stable/quickstart/#a-minimal-application
+
+#### Mise en place
 
 Le code est découpé en plusieurs fichiers : <br>
 ![arbre des fichier](media/TP9-3-tree.png)
@@ -629,6 +674,11 @@ Pour l'arrêter :
 docker-compose down
 ```
 
+Pour le supprimer :
+```bash
+docker rmi tp9-3-flask
+```
+
 #### Démonstration
 
 ![Démonstration de l'application](media/TP9-3-final.png)
@@ -640,3 +690,85 @@ docker-compose down
 <br>
 
 ## TP 10
+
+**Objectif** : Manipuler Azure
+
+*Je vais profiter de cet exercice pour utiliser Terraform pour le déploiement*
+
+### Pré-requis
+
+- Terraform
+- Azure CLI
+
+Authentification avec Azure CLI
+*Je me suis appuyé sur la documentation terraform :* https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/azure_cli
+
+```bash
+az login
+```
+Une fois connecté, on peux vérifier que l'on est bien authentifié avec la commande suivante :
+
+```bash
+az account list
+```
+
+![az connetion](media/TP10-az-login.png)
+
+
+### TP 10-1 Créer une machine virtuelle azure
+
+#### Mise en place
+
+Je me suis appuyé sur la documentation Azure très complète pour mettre en place la configuration de la machine virtuelle :<br> https://learn.microsoft.com/fr-fr/azure/virtual-machines/linux/quick-create-terraform?tabs=azure-cli<br>
+*J'ai changé le nom de la machine virtuelle, le type de stockage qui ne fonctionnait pas, et la localisation pour mettre la France. Ainsi que quelques variables de confort comme le nom d'utilisateur, où l'ajout de la clé ssh directement dans les fichier locaux du PC pour pouvoir acceder à la VM depuis mon PC sans manipulations supplémentaire.*
+
+Il y'a plusieurs fichers pour la configuration qui sont les suivants :
+
+- [main.tf](tp10/tp10-1/main.tf)<br>
+  On retrouve la configuration de la machine virtuelle dans la ressource : `azurerm_linux_virtual_machine" "my_terraform_vm`
+
+- [variables.tf](tp10/tp10-1/variables.tf)
+- [outputs.tf](tp10/tp10-1/outputs.tf)
+- [ssh.tf](tp10/tp10-1/ssh.tf)
+- [provider.tf](tp10/tp10-1/provider.tf)
+
+Tous accessible dans le dossier [tp10/tp10-1](tp10/tp10-1)
+
+#### Lancement de l'application
+
+Initialisation de terraform
+
+```bash
+terraform init -upgrade
+```
+
+Mise en forme de la configuration
+
+```bash
+terraform fmt
+```
+
+verification de la configuration pendant le developpement
+
+```bash
+terraform plan
+```
+
+Une fois que tout est bon, on peux lancer la création de la machine virtuelle
+
+```bash
+terraform apply
+```
+
+Toutes les ressources sont créées, on y retrouve notement la machine virtuelle et ces caractéristiques
+
+![terraform plan](media/TP10-1-plan.png)
+
+Une fois terminé on retrouve bien la machine sur Azure :
+![TP10-1 VM azure](media/TP10-1-azure.png)
+
+Et je peux me connecter à la machine virtuelle en ssh avec la commande suivante :
+
+![Connection SSH](media/TP10-1-SSH.png)
+
+Cette configuration sera la base pour la suite du TP.
