@@ -23,6 +23,8 @@
 
 **Objectif** : d&ployer une application multiconteneurs
 
+#### Mise en place
+
 Mise en place d'un grafana avec un prometheus :
 
 [Dockerfile](tp5/docker-compose.yml)
@@ -50,11 +52,26 @@ volumes:
   data: {}
 ```
 
-Puis lancement de l'application :
+#### lancement de l'application
 
 ```bash
 docker-compose up -d
 ```
+
+pour l'arrêter :
+
+```bash
+docker-compose down
+```
+
+pour le supprimer :
+
+```bash
+docker rmi grafana/grafana-enterprise:latest prom/prometheus:latest
+```
+
+#### Démonstration
+
 On peut ensuite se connecter sur le port 3000 pour grafana et sur le port 9090 pour prometheus.
 
 ![lancement de l'application](media/TP5-launch.png)
@@ -65,7 +82,9 @@ On peut ensuite se connecter sur le port 3000 pour grafana et sur le port 9090 p
 
 ## TP 5-2
 
-*En relisant l'énoncé j'ai l'impression qu'il étais attendu d'appeler un un code avec docker*
+*En relisant l'énoncé j'ai l'impression qu'il était attendu d'appeler un code local avec docker*
+
+#### Mise en place
 
 J'ai donc mis en place une application simple en python fastapi qui renvoie un "Hello World" sur le port 8000
 
@@ -96,21 +115,39 @@ USER appuser
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-Je peux maintenant construire l'image, la lancer et vérifié que les appels API fonctionnent
+#### Lancement de l'application
+
+Je peux maintenant construire l'image, la lancer et vérifier que les appels API fonctionnent
 
 ```bash
-docker build -t fastapi-app .
+docker build -t fastapi-img .
 ```
 ```bash
-docker run -p 8000:8000 -d --name fastapi_app fastapi
+docker run -p 8000:8000 -d --name fastapi-app fastapi-img
 ```
 ```bash
 curl http://localhost:8000/
 ````
 
+Affichage des logs de l'application :
+
 ```bash
-docker logs fastapi_app
+docker logs fastapi-app
 ```
+
+Pour l'arrêter :
+
+```bash
+docker stop fastapi-app
+```
+
+Pour le supprimer :
+
+```bash
+docker rm fastapi-app && docker rmi fastapi-app
+```
+
+#### Démonstration
 
 ![Lancement de l'app](media/TP5-2-launch.png)
 
@@ -119,6 +156,8 @@ docker logs fastapi_app
 ## TP 6
 
 **Objectif**  : Deployer une application multi conteneur wordpress et nginx
+
+#### Mise en place
 
 J'ai mis en place un docker-compose.yml en prenant exemple sur la documentation docker hub
 <https://hub.docker.com/_/wordpress>
@@ -157,23 +196,33 @@ volumes:
   db:
 ```
 
-Puis lancement de l'application :
+#### Lancement de l'application
 
 ```bash
 docker-compose up -d
 ```
 
+pour l'arrêter :
+
+```bash
+docker-compose down
+```
+
+#### Démonstration
+
 On peux ensuite se connecter au wordpress sur le port 8080
 
 ![Lancement des containeurs](media/TP6-launch.png)
 
-![alt text](media/TP6-final.png)
+![Résultat](media/TP6-final.png)
 
 <br>
 
 ## TP 7
 
 **Objectif** : Déployer un conteneur de base de données et sécurisé ces données
+
+#### Mise en place
 
 J'ai mis en place un docker-compose.yml en prenant exemple sur la documentation docker hub de mysql
 <https://hub.docker.com/_/mysql> avec une utilisation de secrets docker pour stocker les mots de passes
@@ -212,11 +261,15 @@ secrets:
     external: true
 ```
 
-Et j'ai mis en place les secrets avec docker swarm:
+#### Lancement de l'application
+
+J'ai mis en place les secrets avec docker swarm:
 
 ```bash
 docker swarm init
 ```
+
+*Il peut être nécéssaire de spécifier l'adresse IP avec l'option :* `--advertise-addr`
 
 ```bash
 echo "IncroyableMDP" | docker secret create mysql_root_password -
@@ -238,23 +291,53 @@ Et enfin on peut lancer l'application :
 docker stack deploy -c docker-compose.yml mysql_tp7
 ```
 
-On pourrait pousser les bonnes pratiques en mettant en place un vault pour stocker les secrets couplé avec ansible. Mais le TP n'a pas l'air de demander ça, et doit durer 15 minutes.
-
-Et pour verifier que tout fonctionne, on peux ce connecter où verifier les logs du conteneur :
+Pour verifier que tout fonctionne, on peux ce connecter :
 
 ```bash
-docker exec -it mysql_tp7_db mysql -u root -p
+docker exec -it mysql_tp7_db.1.<Identifiant_swarm> mysql -u root -p
 ```
+
+*la touche Tab pour réccupérer l'ID swarm rapidement*
+
+où verifier les logs du conteneur :
 
 ```bash
 docker logs mysql_tp7_db
 ```
+
+pour l'arrêter :
+
+```bash
+docker stack rm mysql_tp7
+```
+pour le supprimer :
+
+```bash
+docker secret rm mysql_root_password && docker secret rm mysql_user_password
+```
+
+```bash
+docker swarm leave --force
+```
+
+#### Remarque
+
+- On pourrait pousser les bonnes pratiques en mettant en place un vault pour stocker les secrets couplé avec ansible. Mais le TP n'a pas l'air de demander ça, et doit durer 15 minutes.
+
+- L'application est très basique, le but étais de tester la mise en place de secrets docker
+
+#### Démonstration
+
+![Lancement](media/TP7-launch.png)
+
 <br>
 
 ## TP 8
 
 **Objectif** : Déployer un conteneur de base de données et
 sécurisé ces données (avec un .env)
+
+#### Mise en place
 
 J'ai mis en place un docker-compose.yml en prenant exemple sur la documentation docker hub de mysql
 <https://hub.docker.com/_/mysql>
@@ -295,11 +378,20 @@ MYSQL_USER=user
 MYSQL_PASSWORD=sqlpass
 ```
 
-Puis lancement de l'application :
+#### Lancement de l'application
+
 
 ```bash
 docker-compose up -d
 ```
+
+pour l'arrêter :
+
+```bash
+docker-compose down
+```
+
+#### Démonstration
 
 ![Lancement de l'app](media/TP8-launch.png)
 
@@ -321,6 +413,10 @@ docker exec -it mysql_db mysql -u root -p
 
 **Objectif** : Créer un Dockerfile basique d'un nginx sur une image ubuntu
 
+#### Mise en place
+J'ai mis en place un dockerfile basique d'un nginx sur une image ubuntu<br>
+*Je n'ai pas mis de docker-compose.yml pour un seul conteneur*
+
 [Dockerfile](tp9/tp9-1/Dockerfile)
 
 ```dockerfile
@@ -339,7 +435,9 @@ EXPOSE 80
 # Start
 CMD ["nginx", "-g", "daemon off;"]
 ```
-Pour construire l'image :
+
+#### Lancement de l'application
+
 
 ```bash
 docker build -t tp9-1 .
@@ -349,6 +447,18 @@ Et pour lancer le conteneur :
 
 ```bash
 docker run -d -p 80:80 tp9-1
+```
+
+Pour l'arrêter :
+
+```bash
+docker stop tp9-1
+```
+
+Pour le supprimer :
+
+```bash
+docker rm tp9-1
 ```
 
 Après ça on peux se connecter.
@@ -401,6 +511,132 @@ docker build -t tp9-2 .
 docker run -d -p 80:80 tp9-2
 ```
 
-Le résultat ci dessous :
+Le résultat ci dessous avec un test curl :
 
 ![Lancement de l'application](media/TP9-2-launch.png)
+
+<hr>
+
+### TP 9-3 Dockerfile avec environnement et persistance
+
+**Objectif** : Déployer une application Python Flask utilisant une variable d'environnement pour sa configuration, avec un dossier pour la persistance des logs
+
+*Réalisé à l'aide de la documentation de Flask :* https://flask.palletsprojects.com/en/stable/quickstart/#a-minimal-application
+
+Le code est découpé en plusieurs fichiers : <br>
+![arbre des fichier](media/TP9-3-tree.png)
+
+- La racine du projet contenant les fichier de configuration de docker
+
+[Dockerfile](tp9/tp9-3/Dockerfile)
+```dockerfile
+FROM python:3.13.3-alpine3.21
+
+COPY requirements.txt /app/requirements.txt
+
+# La bonne partiques est d'utiliser q'une seule commande RUN.
+# Mais pour une meilleur lisibilité des étapes, je vais en utiliser plusieurs.  
+
+# Installation des dépendances depuis requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt && \
+    rm -rf /root/.cache
+
+# Création de l'utilisateur qui executera l'application pour que ce ne soit pas root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Création du dossier de logs et attribution des droits à l'utilisateur appuser
+RUN mkdir -p /logs && chown appuser:appgroup /logs
+VOLUME ["/logs"]
+    
+# Copie du code source dans le conteneur
+COPY app /app
+
+EXPOSE 5000
+
+# Variables d'environnement pour Flask
+ENV FLASK_ENV=production
+
+# Passage de l'utilisateur root à appuser pour plus de sécurité
+USER appuser
+
+CMD ["flask", "--app", "app", "run", "--host=0.0.0.0"]
+```
+[requirements.txt](tp9/tp9-3/requirements.txt)
+```text
+flask
+```
+
+[.env](tp9/tp9-3/.env)
+```text
+# Je laisse le fichier dans le repo, mais c'est une mauvaise pratique de le faire habituellement.
+FLASK_SECRET_KEY=Ma_cle_super_secrete
+```
+
+[docker-compose.yml](tp9/tp9-3/docker-compose.yml)
+```yaml
+services:
+  flask:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/logs
+```
+
+<br>
+
+- Le dossier app contenant le code de l'application flask
+
+[app.py](tp9/tp9-3/app/__init__.py)
+```python
+import os
+import logging
+from flask import Flask
+
+logging.basicConfig(filename='/logs/app.log', level=logging.INFO)
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'defaultkey')
+
+@app.route("/")
+def hello_world():
+    return "<p>Hello, World!</p>"
+
+```
+
+<br>
+
+- Le dossier logs contenant les logs du volume persistant de l'application
+
+[logs](tp9/tp9-3/logs/app.log)
+
+*A noter que au premier lancement de l'application j'ai eu une erreur :*<br> `flask-1  | PermissionError: [Errno 13] Permission denied: '/logs/app.log'`
+
+*Que j'ai corriger modifiant les droits d'acces au dossier des logs :*
+```bash
+sudo chmod 777 logs
+```
+
+#### Lancement de l'application
+
+```bash
+docker-compose up -d
+```
+Pour l'arrêter :
+```bash
+docker-compose down
+```
+
+#### Démonstration
+
+![Démonstration de l'application](media/TP9-3-final.png)
+
+- Au lancement de m'application on a bien le conteneur de logs qui est monté
+
+- Et en consultant le fichier des logs on retrouve les logs actuel, et du lancement précédent
+
+<br>
+
+## TP 10
