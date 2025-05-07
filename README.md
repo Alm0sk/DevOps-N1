@@ -17,6 +17,7 @@
   - [TP 10](#tp-10)
     - [TP 10-1 Créer une machine virtuelle azure](#tp-10-1-créer-une-machine-virtuelle-azure)
     - [TP 10-2 Héberger un site web statique sur Azure Storage](#tp-10-2-héberger-un-site-web-statique-sur-azure-storage)
+    - [TP 10-3 Connecter deux réseaux virtuels avec peering](#tp-10-3-connecter-deux-réseaux-virtuels-avec-peering)
 
 
 
@@ -716,6 +717,7 @@ az account list
 
 ![az connetion](media/TP10-az-login.png)
 
+<br>
 
 ### TP 10-1 Créer une machine virtuelle azure
 
@@ -776,7 +778,7 @@ Et je peux me connecter à la machine virtuelle en ssh avec la commande suivante
 ![Connection SSH](media/TP10-1-SSH.png)
 
 Cette configuration sera la base pour la suite du TP.
-
+<br>
 ### TP 10-2 Héberger un site web statique sur Azure Storage
 
 #### Mise en place
@@ -845,4 +847,43 @@ terraform apply
 
 Et directement sur navigateur : <br>
 ![Lancement de l'application](media/TP10-2-final.png)
+
+<br>
+
+### TP 10-3 Connecter deux réseaux virtuels avec peering
+
+**Objectif** : Créer  2  VMs  puis créer  des  réseaux  virtuels  (VNet)  isolés,  déployer  des  machines virtuelles  dans  chacun,  puis  établir  un  peering  entre  les  VNet  pour  permettre  la communication entreles VMs
+
+#### Mise en place
+
+Pour cette partie, je vais m'appuyer sur les ressource ``azurerm_virtual_network`` et ``azurerm_virtual_network_peering`` en plus des modules déjà utilisé dans le 10-1 pour créer la première vm et ainsi modifier le fichier [main.tf](tp10/main.tf)<br>
+
+*Documentation :* https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering
+
+#### Lancement de l'application
+
+```bash
+terraform apply
+```
+
+#### Démonstration
+
+Les machines virtuelles sont bien créées, mais n'ont pas d'adresse IP publique.
+
+Je peux récupperer leurs adresse privé avec la commande suivante :
+
+```bash
+az vm list-ip-addresses -g rg-more-iguana -n vm1 --query "[].virtualMachine.network.privateIpAddresses" -o tsv
+```
+
+```bash
+az vm list-ip-addresses -g rg-more-iguana -n vm2 --query "[].virtualMachine.network.privateIpAddresses" -o tsv
+```
+*rg-more-iguana est à remplacer par le nom de votre groupe de ressource*
+
+![Reccuperation de l'ip](media/TP10-3-IP.png)
+
+J'ai alors créer un mot de passe pour la `vm1` dans main.tf pour m'y connecter via la console série Azure et ping la deuxième.
+
+![Ping de la deuxieme vm](media/TP-10-ping.png)
 
