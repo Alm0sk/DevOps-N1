@@ -15,6 +15,8 @@
     - [TP 9-2 Dockerfile avec gestion des fichiers et métadonnées](#tp-9-2-dockerfile-avec-gestion-des-fichiers-et-métadonnées)
     - [TP 9-3 Dockerfile avec environnement et persistance](#tp-9-3-dockerfile-avec-environnement-et-persistance)
   - [TP 10](#tp-10)
+    - [TP 10-1 Créer une machine virtuelle azure](#tp-10-1-créer-une-machine-virtuelle-azure)
+    - [TP 10-2 Héberger un site web statique sur Azure Storage](#tp-10-2-héberger-un-site-web-statique-sur-azure-storage)
 
 
 
@@ -760,6 +762,8 @@ Une fois que tout est bon, on peux lancer la création de la machine virtuelle
 terraform apply
 ```
 
+#### Démonstration
+
 Toutes les ressources sont créées, on y retrouve notement la machine virtuelle et ces caractéristiques
 
 ![terraform plan](media/TP10-1-plan.png)
@@ -772,3 +776,73 @@ Et je peux me connecter à la machine virtuelle en ssh avec la commande suivante
 ![Connection SSH](media/TP10-1-SSH.png)
 
 Cette configuration sera la base pour la suite du TP.
+
+### TP 10-2 Héberger un site web statique sur Azure Storage
+
+#### Mise en place
+
+Suite au TP 10-1, le compte de stockage est en place :
+![Compte de stockage](media/TP-10-2-storage.png)
+
+Je vais donc mettre en place un site web statique sur le compte de stockage créé précédement, en ajoutant à la configuration terraform la ressource `azurerm_storage_account_static_website`<br>
+*Documentation :* https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account_static_website
+
+J'ai rajouté la resources suivante dans le fichier [main.tf](tp10/main.tf)
+
+```tf
+resource "azurerm_storage_account_static_website" "static_site" {
+  storage_account_id = azurerm_storage_account.my_storage_account.id
+  index_document     = "index.html"
+  error_404_document = "404.html"
+}
+```
+
+Et également un petit template web simple dans le dossier [web](tp10/web) contenant un index.html et un 404.html
+
+Template que j'upload en blob dans le compte de stockage avec la ressource `azurerm_storage_blob`<br>
+*Documentation :* https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_blob
+
+```tf
+resource "azurerm_storage_blob" "index_html" {
+  name                   = "index.html"
+  storage_account_name   = azurerm_storage_account.my_storage_account.name
+  storage_container_name = "$web"
+  type                   = "Block"
+  source                 = "${path.module}/web/index.html"
+  content_type           = "text/html"
+  depends_on             = [azurerm_storage_account_static_website.static_site]
+}
+
+resource "azurerm_storage_blob" "error_html" {
+  name                   = "404.html"
+  storage_account_name   = azurerm_storage_account.my_storage_account.name
+  storage_container_name = "$web"
+  type                   = "Block"
+  source                 = "${path.module}/web/404.html"
+  content_type           = "text/html"
+  depends_on             = [azurerm_storage_account_static_website.static_site]
+}
+```
+
+*J'ai eu une erreur au premier lancement de la commande terraform apply, car le compte de stockage n'était pas encore crée.J'ai donc rajouté la dépendance sur la ressource `azurerm_storage_account_static_website` pour que le blob ne soit créé qu'une fois le compte de stockage prêt.*
+
+*Pour plus de confort j'ai également rajouté l'ouput de l'url du compte de stockage dans* [outputs.tf](tp10/outputs.tf)
+```tf
+output "static_website_url" {
+  value = azurerm_storage_account.my_storage_account.primary_web_endpoint
+}
+```
+
+#### Lancement de l'application
+
+```bash
+terraform apply
+```
+
+#### Démonstration
+
+![Lancement de l'application](media/TP10-2-launch.png)
+
+Et directement sur navigateur : <br>
+![Lancement de l'application](media/TP10-2-final.png)
+

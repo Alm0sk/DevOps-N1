@@ -89,6 +89,34 @@ resource "azurerm_storage_account" "my_storage_account" {
   account_replication_type = "LRS"
 }
 
+# Azure storage static website
+resource "azurerm_storage_account_static_website" "static_site" {
+  storage_account_id = azurerm_storage_account.my_storage_account.id
+  index_document     = "index.html"
+  error_404_document = "404.html"
+}
+
+# Create a blob container for the static website
+resource "azurerm_storage_blob" "index_html" {
+  name                   = "index.html"
+  storage_account_name   = azurerm_storage_account.my_storage_account.name
+  storage_container_name = "$web"
+  type                   = "Block"
+  source                 = "${path.module}/web/index.html"
+  content_type           = "text/html"
+  depends_on             = [azurerm_storage_account_static_website.static_site]
+}
+
+resource "azurerm_storage_blob" "error_html" {
+  name                   = "404.html"
+  storage_account_name   = azurerm_storage_account.my_storage_account.name
+  storage_container_name = "$web"
+  type                   = "Block"
+  source                 = "${path.module}/web/404.html"
+  content_type           = "text/html"
+  depends_on             = [azurerm_storage_account_static_website.static_site]
+}
+
 # Create virtual machine
 resource "azurerm_linux_virtual_machine" "my_terraform_vm" {
   name                  = "tp10-1_vm"
