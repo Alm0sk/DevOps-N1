@@ -5,6 +5,7 @@
 ## Sommaire
 
 - [TP cours de DevOps](#tp-cours-de-devops)
+  - [Introduction](#introduction)
   - [TP 5](#tp-5)
   - [TP 5-2](#tp-5-2)
   - [TP 6](#tp-6)
@@ -24,9 +25,20 @@
 <br>
 
 
+## Introduction
+
+Chaque partie est lié à un TP d'on les fichiers sont dans le dossier `tpX` correspondant <br>
+
+Les différents codes sont prévus pour être lancé dans un terminal Linux ou WSL2 dans le repertoire du TP correspondant.
+
+Les commandes sont prévu pour fonctionner sur un OS ArchLinux. Je ne pense pas qu'il y ai des différences avec les autres distributions, mais je le précise au cas où.
+
+Mon utilisateur fais partie du groupe docker, donc je n'ai pas besoin de rajouter `sudo` devant les commandes docker. je ne le précise pas dans les commandes.
+
+
 ## TP 5
 
-**Objectif** : d&ployer une application multiconteneurs
+**Objectif** : déployer une application multiconteneurs
 
 #### Mise en place
 
