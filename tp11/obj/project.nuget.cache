@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "rGev+SgCZiRpzm5JYVmOUEUgLCuDGfUV+yqyr7TCSMOgUQdDv4IRLpe/o28biddmC3i/jYi/j9iQOjIqQIcNyg==",
+  "success": true,
+  "projectFilePath": "/home/almosk/Documents/tp_DevOps/tp11/tp11.csproj",
+  "expectedPackageFiles": [
+    "/home/almosk/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.15/microsoft.aspnetcore.app.ref.8.0.15.nupkg.sha512"
+  ],
+  "logs": []
+}
