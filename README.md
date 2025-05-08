@@ -19,6 +19,7 @@
     - [TP 10-1 Créer une machine virtuelle azure](#tp-10-1-créer-une-machine-virtuelle-azure)
     - [TP 10-2 Héberger un site web statique sur Azure Storage](#tp-10-2-héberger-un-site-web-statique-sur-azure-storage)
     - [TP 10-3 Connecter deux réseaux virtuels avec peering](#tp-10-3-connecter-deux-réseaux-virtuels-avec-peering)
+  - [TP 11](#tp-11)
 
 
 
@@ -898,4 +899,107 @@ az vm list-ip-addresses -g rg-more-iguana -n vm2 --query "[].virtualMachine.netw
 J'ai alors créer un mot de passe pour la `vm1` dans main.tf pour m'y connecter via la console série Azure et ping la deuxième.
 
 ![Ping de la deuxieme vm](media/TP-10-ping.png)
+
+<br>
+
+## TP 11
+
+**Objectif** : Faire des manipulations de pipeline CI/CD avec Azure DevOps
+
+### TP 11-1 Pipeline CI/CD automatisé avec Azure DevOps Starter (.NET)
+
+**Objectif** : Créer un projet DevOps Starter pour une appli .NET, ce qui génère automatiquement un pipeline d’intégration continue et de déploiement continu vers Azure App Service, avec codesource, build/release et monitoring intégrés
+
+**Remarque** : Je devais m'appuyer sur la documentation Microsoft pour mettre en place le projet DevOps Starter :<br> 
+https://azuredevopslabs.com/labs/vstsextend/azuredevopsprojectdotnet
+*Mais à la première étape je n'arrive pas à trouver `DevOps starter`*
+
+![DevOps starter](media/TP11-DevOps-starter.png)
+
+J'ai donc trouvé une autre documentation sur laquel je vais m'appuyer, le résultat risque de différer très légèrement de l'énoncé :<br>
+https://learn.microsoft.com/fr-fr/azure/devops/pipelines/get-started/azure-devops-starter?view=azure-devops&tabs=dotnet-core
+
+**pré-requis** :<br>
+- Avoir un compte Azure DevOps
+- Avoir un compte Azure
+- dotnet 8.0
+
+#### Mise en place
+
+Dans un premier temps je créer un projet .Net basique en local avec la commande suivante :
+
+*Initialisation du code .Net*
+
+```bash
+dotnet new webapp -f net8.0
+```
+On peux ensuite le tester en local avec la commande suivante :
+
+```bash
+dotnet run
+```
+
+*Initialisation de Azure DevOps*
+
+J'ai ensuite créer un projet Azure DevOps avec le nom `TP11`<br>
+
+J'en profite pour ajouter une clé SSH et GPG pour mettre tout de suite en place les bonnes pratiques de sécurité.
+Mais à ma grande surprise, en 2025 Azure DevOps n'a pas l'air de supporter le GPG et les clé ssh de type ssh-ed25519 ont l'air trop récentes.<br>
+
+Je préfère ne pas commenter ces informations...
+
+Je ne met donc rien en place pour le moment. de ce côté là, et retourne sur la création du projet.
+
+![Création du projet](media/TP11-1-create-project.png)
+
+Et j'ai ajouté le code source de l'application .Net dans le projet Azure DevOps avec les commandes suivante :
+
+Initialisation de git
+
+```bash
+git init -b main
+```
+Ajout de tout les fichiers du repertoire
+
+```bash
+git add .
+```
+Commit des fichiers
+
+```bash
+git commit -m "Initial commit"
+```
+Envoi du code sur le projet Azure DevOps
+
+```bash
+git remote add origin https://almoskEdu@dev.azure.com/almoskEdu/TP11/_git/TP11
+```
+```bash
+git push -u origin --all
+```
+
+Le projet est maintenant sur Azure DevOps
+
+![Projet sur Azure DevOps](media/TP11-AzureDevOps.png)
+
+*Initialisation du pipeline*
+
+Je vais maintenant mettre en place le pipeline CI/CD avec l'interface Azure DevOps depuis le menu `Pipelines`<br>
+en choisissant :
+
+- `Azure Repos Git`<br>
+- `TP11`<br>
+- `Starter pipeline`<br>
+
+![Pipeline Etape1](media/TP11-Pipeline.png)
+
+Et au premier run du pipeline, j'ai une erreur de build :
+```bash
+##[error]No hosted parallelism has been purchased or granted. To request a free parallelism grant, please fill out the following form https://aka.ms/azpipelines-parallelism-request
+```
+
+La page me renvoie vers un formulaire pour demander l'accès à un agent de build...
+Je l'ai rempli aujourd'hui le 07 mai, à voir quand j'aurais une réponse.
+
+Sinon il y'a l'air d'avoir la possibilité de créer un agent de build auto-hébergé comme sur GitLab, je me garde cette solution sous le coude si je n'ai pas de réponse rapidement.
 
