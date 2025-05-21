@@ -20,6 +20,7 @@
     - [TP 10-2 Héberger un site web statique sur Azure Storage](#tp-10-2-héberger-un-site-web-statique-sur-azure-storage)
     - [TP 10-3 Connecter deux réseaux virtuels avec peering](#tp-10-3-connecter-deux-réseaux-virtuels-avec-peering)
   - [TP 11](#tp-11)
+  - [TP Bonus : Push d'une image sur docker hub](#tp-bonus--push-dune-image-sur-docker-hub)
 
 
 
