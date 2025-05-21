@@ -20,8 +20,8 @@
     - [TP 10-2 Héberger un site web statique sur Azure Storage](#tp-10-2-héberger-un-site-web-statique-sur-azure-storage)
     - [TP 10-3 Connecter deux réseaux virtuels avec peering](#tp-10-3-connecter-deux-réseaux-virtuels-avec-peering)
   - [TP 11](#tp-11)
-  - [TP Bonus : Push d'une image sur docker hub](#tp-bonus--push-dune-image-sur-docker-hub)
-
+  - [Annexe: mise en place de l'agent sur Docker](azp-agent-in-docker/README.md)
+  - [TP 13 : Push d'une image sur docker hub](#tp-13--push-dune-image-sur-docker-hub)
 
 
 <br>
@@ -1004,7 +1004,13 @@ Je l'ai rempli aujourd'hui le 07 mai, à voir quand j'aurais une réponse.
 
 Sinon il y'a l'air d'avoir la possibilité de créer un agent de build auto-hébergé comme sur GitLab, je me garde cette solution sous le coude si je n'ai pas de réponse rapidement.
 
-## TP Bonus : Push d'une image sur docker hub
+*Update du 21 mai:* Je n'ai toujours pas eu de réponse, ni d'activation de l'agent de build. J'ai donc décidé de créer un agent auto-hébergé dans un container docker.
+
+Les fichiers de configuration son dans le dossier [azp-agent-in-docker](azp-agent-in-docker)
+*Je me suis appuyé sur la documentation de Microsoft pour mettre en place l'agent auto-hébergé :* https://learn.microsoft.com/fr-fr/azure/devops/pipelines/agents/v2-linux?view=azure-devops&tabs=installdocker
+Le [Readme.md](azp-agent-in-docker/README.md) que j'ai mis en place dans le dossier détail mon cheminement de mise en place.
+
+## TP 13 : Push d'une image sur docker hub
 
 **Objectif** : Pousser une image sur docker hub
 
