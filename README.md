@@ -523,9 +523,9 @@ LABEL description="Application pour TP9-2"
 LABEL version="0.1"
 
 # Installation de nginx
-RUN apt-get update && \
-    apt-get install -y nginx && \
-    apt-get clean
+RUN apt update && \
+    apt install -y nginx && \
+    apt clean
 
 # Création du dossier de travail
 WORKDIR /var/www/html
@@ -1003,3 +1003,34 @@ Je l'ai rempli aujourd'hui le 07 mai, à voir quand j'aurais une réponse.
 
 Sinon il y'a l'air d'avoir la possibilité de créer un agent de build auto-hébergé comme sur GitLab, je me garde cette solution sous le coude si je n'ai pas de réponse rapidement.
 
+## TP Bonus : Push d'une image sur docker hub
+
+**Objectif** : Pousser une image sur docker hub
+
+#### Mise en place
+
+J'ai mis en place une image  docker  très simple d'un alpine avec le paquet fastfetch installé
+
+[Dockerfile](push-to-docker/Dockerfile)
+```dockerfile
+FROM alpine:latest
+
+RUN apk add --upgrade --no-cache fastfetch
+
+CMD [ "sleep", "300" ]
+```
+
+puis je me suis connecté à un compte docker crée pour l'occasion
+```bash
+docker login
+```
+
+J'ai ensuite tagger l'image :
+```bash
+docker build -t akitaipi/fastfetch-test .
+```
+et la push sur docker hub
+```bash
+docker push akitaipi/fastfetch-test:latest
+```
+![Docker Hub](media/push-to-docker.png)

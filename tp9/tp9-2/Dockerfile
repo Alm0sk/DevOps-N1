@@ -6,9 +6,9 @@ LABEL description="Application pour TP9-2"
 LABEL version="0.1"
 
 # Installation de nginx
-RUN apt-get update && \
-    apt-get install -y nginx && \
-    apt-get clean
+RUN apt update && \
+    apt install -y nginx && \
+    apt clean
 
 # Création du dossier de travail
 WORKDIR /var/www/html
