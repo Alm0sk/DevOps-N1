@@ -21,8 +21,8 @@
     - [TP 10-3 Connecter deux réseaux virtuels avec peering](#tp-10-3-connecter-deux-réseaux-virtuels-avec-peering)
   - [TP 11](#tp-11)
   - [Annexe: mise en place de l'agent sur Docker](azp-agent-in-docker/README.md)
+  - [TP 12 : Conteneurisation](#tp-12--conteneurisation)
   - [TP 13 : Push d'une image sur docker hub](#tp-13--push-dune-image-sur-docker-hub)
-
 
 <br>
 
@@ -1009,6 +1009,212 @@ Sinon il y'a l'air d'avoir la possibilité de créer un agent de build auto-héb
 Les fichiers de configuration son dans le dossier [azp-agent-in-docker](azp-agent-in-docker)
 *Je me suis appuyé sur la documentation de Microsoft pour mettre en place l'agent auto-hébergé :* https://learn.microsoft.com/fr-fr/azure/devops/pipelines/agents/v2-linux?view=azure-devops&tabs=installdocker
 Le [Readme.md](azp-agent-in-docker/README.md) que j'ai mis en place dans le dossier détail mon cheminement de mise en place.
+
+J'ai préféré utiliser docker pour l'agent, car je ne voulais le faire directement sur ma machine, vu qu'il a des droit root.
+
+Au final, dans mon projet azure devOps. Le pipeline est bien mis en place, et ce lance automatiquement à chaque push sur le repository trigger sur la branche la branch `main`.
+
+## TP 12 : Conteneurisation
+
+**Objectif** : Conteneuriser une application sur Azure
+
+### TP 12-1 Déployer un conteneur Docker sur Azure Container Instances
+
+**Objectif** : Créer un conteneur Docker sur Azure Container Instances
+*Je vais m'appuyer sur la documentation de Microsoft pour mettre en place le projet avec Terraform : https://learn.microsoft.com/fr-fr/azure/container-instances/container-instances-quickstart-terraform*<br>
+
+Par rappor à la documentation, j'ai modifier la ressource `azurerm_container_group` pour ajouter un nom dns
+```tf
+resource "azurerm_container_group" "container" {
+  name                = "${var.container_group_name_prefix}-${random_string.container_name.result}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  ip_address_type     = "Public"
+  os_type             = "Linux"
+  restart_policy      = var.restart_policy
+  dns_name_label = "${var.container_group_name_prefix}-${random_string.container_name.result}"
+
+  container {
+    name   = "${var.container_name_prefix}-${random_string.container_name.result}"
+    image  = var.image
+    cpu    = var.cpu_cores
+    memory = var.memory_in_gb
+
+    ports {
+      port     = var.port
+      protocol = "TCP"
+    }
+  }
+}
+```
+
+Et un output pour récuperer l'url du conteneur
+```tf
+output "container_dns_name_label" {
+  value = azurerm_container_group.container.fqdn
+}
+```
+
+#### Mise en place
+
+Pour interagir avec azure j'ai utilisé azure cli. Il faut l'installer et se connecter avec la commande suivante :
+
+```bash
+az login
+```
+Ensuite j'ai mis en place les fichiers de configuration en me basant sur la documentation de Microsoft
+et initier le projet terraform avec la commande suivante :
+
+```bash
+terraform init -upgrade
+```
+
+``` bash
+terraform apply
+```
+
+![Build du projet terraform](media/tp12-1-build.png)
+
+#### Démonstration
+
+A la fin du `terraform apply` on a l'url du conteneur qui est affiché dans le terminal.
+
+![terraform apply](media/tp12-1-terraform-apply.png)
+
+On peux ensuite retirer toutes les ressources d'azure avec la commande suivante :
+
+```bash
+terraform destroy
+```
+
+### TP12-2 Construire  et  tester  une  application  conteneurisée  multi-service (Docker Compose)
+
+**Objectif** : Adatper l'exercice précédent pour déployer un container multi-service avec docker
+
+**Remarque** : Je vais m'appuyer sur la documentation de Microsoft pour mettre en place le projet avec Terraform : https://learn.microsoft.com/en-us/azure/aks/tutorial-kubernetes-prepare-acr?tabs=azure-cli*<br>
+
+#### Mise en place
+
+Dans un premier temps il faut récupperer le projet git contenant le code de l'application :
+```bash
+git clone https://github.com/Azure-Samples/aks-store-demo.git
+```
+
+puis je met en place l'image docker de l'application :
+
+```bash
+docker compose -f aks-store-demo/docker-compose-quickstart.yml up -d
+```
+
+Je peux maintenant l'envoyer sur mon docker hub avec les commande suivante :
+
+*Authentification à docker*
+
+```bash
+doker login
+```
+
+*Tag de l'image*
+
+```bash
+docker tag aks-store-demo-store-front:latest akitaipi/store-front:latest
+docker tag aks-store-demo-product-service:latest akitaipi/product-service:latest
+docker tag aks-store-demo-order-service:latest akitaipi/order-service:latest
+```
+
+*Push de l'image sur docker hub*
+
+```bash
+docker push akitaipi/store-front:latest
+docker push akitaipi/product-service:latest
+docker push akitaipi/order-service:latest
+```
+
+*Preparation de la configuration du conteneur docker*
+
+Je peux maintenant mettre en place k8s en rajoutant ajoutant la configuration à mon code terraform :
+```tf
+resource "azurerm_kubernetes_cluster" "aks" {
+  name                = "aks-tp12"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  dns_prefix          = "akstp12"
+
+  default_node_pool {
+    name       = "default"
+    node_count = 1
+    vm_size    = "Standard_DS2_v2"
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+output "kube_config" {
+  value = azurerm_kubernetes_cluster.aks.kube_config_raw
+  sensitive = true
+}
+```
+ainsi qu'un fichier de déploiement k8s pour l'application
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+      - name: order-service
+        image: akitaipi/order-service:latest
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: order-service
+```
+
+**Lancement du k8s**
+
+*Application de la configuration terraform*
+
+```bash
+terraform apply
+```
+
+*Connexion au cluster k8s à partit du kubeconfig généré*
+
+```bash
+export KUBECONFIG=$(pwd)/kubeconfig
+```
+
+*Lancement de l'application*
+
+```bash
+kubectl apply -f order-service-deployment.yaml
+```
+
+![k8s](media/tp12-2-apply.png)
+
+![site](media/tp12-2-end.png)
 
 ## TP 13 : Push d'une image sur docker hub
 

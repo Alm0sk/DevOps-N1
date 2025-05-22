@@ -1,0 +1,14 @@
+version: '3'
+services:
+  store-front:
+    image: akitaipi/store-front:latest
+    ports:
+      - 8080:8080
+  product-service:
+    image: akitaipi/product-service:latest
+    ports:
+      - 3001:3001
+  order-service:
+    image: akitaipi/order-service:latest
+    ports:
+      - 3000:3000
