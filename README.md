@@ -1305,4 +1305,15 @@ microk8s kubectl delete services nodered-service
 
 Pour cette partie je vais utiliser la documentation de Lens : https://docs.k8slens.dev/getting-started/install-lens/#
 
+```bash
+curl -fsSL https://downloads.k8slens.dev/keys/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/lens-archive-keyring.gpg > /dev/null
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/lens-archive-keyring.gpg] https://downloads.k8slens.dev/apt/debian stable main" | sudo tee /etc/apt/sources.list.d/lens.list > /dev/null
+sudo apt update && sudo apt install lens
+```
+Et ensuite je peux lancer Lens depuis la vm avec la commande suivante :
+
+```bash
+lens-desktop
+```
+
 ![lens install](media/TP14-4.png)
