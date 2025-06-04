@@ -23,6 +23,11 @@
   - [Annexe: mise en place de l'agent sur Docker](azp-agent-in-docker/README.md)
   - [TP 12 : Conteneurisation](#tp-12--conteneurisation)
   - [TP 13 : Push d'une image sur docker hub](#tp-13--push-dune-image-sur-docker-hub)
+  - [TP 14 : Déploiement d'un environnement](#tp-14--déploiement-dun-environnement)
+    - [TP 14-1 : Deploiement d'un site web par command et par manifest](#tp-14-1--deploiement-dun-site-web-par-command-et-par-manifest)
+    - [TP 14-2 : Déploiement](#tp-14-2--déploiement)
+    - [TP 14-3 : Vérification](#tp-14-3--vérification)
+    - [TP 14-4 : Déployer le logiciel Lens](#tp-14-4--déployer-le-logiciel-lens)
 
 <br>
 
@@ -1247,3 +1252,57 @@ et la push sur docker hub
 docker push akitaipi/fastfetch-test:latest
 ```
 ![Docker Hub](media/push-to-docker.png)
+
+## TP 14 : Déploiement d'un environnement
+
+### TP 14-1 : Deploiement d'un site web par command et par manifest
+
+**Objectif** : Déployer un site web accessible et résilient
+
+#### Mise en place
+
+Pour mettre en place la vm avec k8s, j'ai utilisé l'hyperviseur Qemu avec l'image debian 12.
+
+*J'ai ajouté mon utilisateur au groupe `microk8s`, je n'ai donc pas besoin d'utiliser `sudo`*
+
+![Vm](media/TP14-1-vm.png)
+
+
+### TP 14-2 : Déploiement
+
+En suivant les étapes de la documentation : https://ubuntu.com/tutorials/getting-started-with-microk8s-on-ubuntu-core#5-deploy-a-sample-container-workload
+
+J'arrive à déployer un site web.
+
+```bash
+microk8s kubectl create deployment nodered --image=nodered/node-red
+microk8s kubectl get pods
+microk8s kubectl expose deployment nodered --type=NodePort --port=1880 --name=nodered-service
+```
+
+### TP 14-3 : Vérification
+
+
+Ensuite pour y acceder, il faut récupperer le port du service avec la commande suivante :
+
+```bash
+microk8s kubectl get services
+```
+
+Et y acceder de la vm via `http://localhost:<port>`
+
+![deploiement dun site](media/TP14-2.png)
+
+Je peux maintenant mettre fin à ce TP en supprimant le service et le déploiement :
+
+```bash
+microk8s kubectl delete deployment nodered
+microk8s kubectl delete services nodered-service
+```
+
+
+### TP 14-4 Déployer le logiciel Lens
+
+Pour cette partie je vais utiliser la documentation de Lens : https://docs.k8slens.dev/getting-started/install-lens/#
+
+![lens install](media/TP14-4.png)
