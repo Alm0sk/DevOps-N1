@@ -28,6 +28,9 @@
     - [TP 14-2 : Déploiement](#tp-14-2--déploiement)
     - [TP 14-3 : Vérification](#tp-14-3--vérification)
     - [TP 14-4 : Déployer le logiciel Lens](#tp-14-4--déployer-le-logiciel-lens)
+  - [TP 15 : Déploiement de la supervision du cluster](#tp-15--déploiement-de-la-supervision-du-cluster)
+    - [TP 15-1 : Déploiement d’un site web par command et par manifest](#tp-15-1--déploiement-dun-site-web-par-command-et-par-manifest)
+    - [TP 15-2 : Tableau de bords](#tp-15-2--tableau-de-bords)
 
 <br>
 
@@ -1301,7 +1304,7 @@ microk8s kubectl delete services nodered-service
 ```
 
 
-### TP 14-4 Déployer le logiciel Lens
+### TP 14-4 : Déployer le logiciel Lens
 
 Pour cette partie je vais utiliser la documentation de Lens : https://docs.k8slens.dev/getting-started/install-lens/#
 
@@ -1317,3 +1320,311 @@ lens-desktop
 ```
 
 ![lens install](media/TP14-4.png)
+
+## TP 15 : Déploiement de la supervision du cluster
+
+### TP 15-1 : Déploiement d’un site web par command et par manifest
+
+**Objectif** : Déployer un Prometheus accessible et résilient
+
+Pour mettre en place prometheus sur mon kluster k8s, j'ai crée me namespace `monitoring` et initialisé la configuration de prometheus
+
+*Création du namespace*
+
+```bash
+kubectl create namespace monitoring
+```
+
+*Création des fichiers de configuration prometheus*
+[prometheus-config.yaml](tp15/prometheus/prometheus-config.yaml)
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server-conf
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'node-exporter'
+        static_configs:
+          - targets: ['node-exporter.monitoring.svc.cluster.local:9100']
+```
+
+[prometheus-deployment.yaml](tp15/prometheus/prometheus-deployment.yaml)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-server
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-server
+  template:
+    metadata:
+      labels:
+        app: prometheus-server
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-server-conf
+            defaultMode: 420
+```
+
+[prometheus-service.yaml](tp15/prometheus/prometheus-service.yaml)
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+  namespace: monitoring
+spec:
+  selector:
+    app: prometheus-server
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9090
+  type: LoadBalancer
+```
+
+[prometheus-exporter.yaml](tp15/prometheus/prometeus-exporter.yaml)
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-exporter
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      containers:
+        - name: node-exporter
+          image: quay.io/prometheus/node-exporter:latest
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+              readOnly: true
+      hostPID: true
+      hostNetwork: true
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: monitoring 
+spec:
+  selector:
+    app: node-exporter
+  ports:
+    - protocol: TCP
+      port: 9100
+      targetPort: 9100
+```
+
+*Application de la configuration*
+
+```bash
+kubectl apply -f prometheus-config.yaml
+kubectl apply -f prometheus-deployment.yaml
+kubectl apply -f prometheus-service.yaml
+kubectl apply -f prometheus-exporter.yaml
+```
+
+*Vérification du déploiement*
+
+```bash
+kubectl get pods -n monitoring
+```
+
+```bash
+kubectl get services -n monitoring
+```
+
+*Accès à l'interface web de Prometheus*
+
+localhost:<port_du_service>
+
+![Prometheus](media/TP15-1-prometheus.png)
+
+*Accès à l'interface web de node exporter*
+
+localhost:<port_du_service_node_exporter>
+![Node Exporter](media/TP15-1-node-exporter.png)
+
+![PrometheusxNode exporter](media/TP15-1-promXnode.png)
+
+
+### TP 15-2 : Tableau de bords
+
+**Objectif** : Déployer Grafana et un tableau de bord pour visualiser les métriques de Prometheus
+Pour mettre en place Grafana, j'ai utilisé la documentation de Grafana : https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/
+
+
+*Création des fichiers de configuration prometheus*
+
+[grafana-deployment.yaml](tp15/grafana/grafana-deployment.yaml)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http-grafana
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /robots.txt
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 2
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 750Mi
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: grafana-pv
+      volumes:
+        - name: grafana-pv
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+```
+
+[grafana-pvc.yaml](tp15/grafana/grafana-pvc.yaml)
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+[grafana-service.yaml](tp15/grafana/grafana-service.yaml)
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  ports:
+    - port: 3000
+      protocol: TCP
+      targetPort: http-grafana
+  selector:
+    app: grafana
+  sessionAffinity: None
+  type: LoadBalancer
+```
+
+*Application de la configuration*
+
+```bash
+kubectl apply -f grafana-pvc.yaml -n monitoring
+kubectl apply -f grafana-deployment.yaml -n monitoring
+kubectl apply -f grafana-service.yaml -n monitoring
+```
+
+*Vérification du déploiement*
+
+```bash
+kubectl get pods -n monitoring
+```
+
+```bash
+kubectl get services -n monitoring
+```
+
+*Accès à l'interface web de Grafana*
+
+localhost:<port_du_service>
+
+*Premier id mot/mdp : admin*
+*Le mot de passe est à changer à la premiere connexion*
+
+![Grafana](media/TP15-2-grafana.png)
+
+*Ajout de la source de données Prometheus*
+Dans Grafana, depuis "Configuration" > "Data Sources" > "Add data source" et "Prometheus".<br>
+
+Avec l'adresse source : http://prometheus-service.monitoring.svc.cluster.local
+
+On réccupère bien les métriques de Prometheus
+
+![Grafana Prometheus](media/TP15-2-grafana-prometheus.png)
+
