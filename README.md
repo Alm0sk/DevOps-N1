@@ -31,6 +31,9 @@
   - [TP 15 : Déploiement de la supervision du cluster](#tp-15--déploiement-de-la-supervision-du-cluster)
     - [TP 15-1 : Déploiement d’un site web par command et par manifest](#tp-15-1--déploiement-dun-site-web-par-command-et-par-manifest)
     - [TP 15-2 : Tableau de bords](#tp-15-2--tableau-de-bords)
+  - [TP 16 : fluxcd - gitlab](#tp-16--fluxcd---gitlab)
+    - [TP 16-1 : Installer FluxCD](#tp-16-1--installer-fluxcd)
+    - [TP 16-2 : Initialiser le cluster avec un nouveau projet](#tp-16-2--initialiser-le-cluster-avec-un-nouveau-projet)
 
 <br>
 
@@ -1614,7 +1617,7 @@ kubectl get services -n monitoring
 
 localhost:<port_du_service>
 
-*Premier id mot/mdp : admin*
+Premier id mot/mdp : admin<br>
 *Le mot de passe est à changer à la premiere connexion*
 
 ![Grafana](media/TP15-2-grafana.png)
@@ -1628,3 +1631,162 @@ On réccupère bien les métriques de Prometheus
 
 ![Grafana Prometheus](media/TP15-2-grafana-prometheus.png)
 
+
+## TP 16 : fluxcd - gitlab
+
+Pour réaliser l'installation de FluxCD et la configuration de GitLab, je vais m'appuyer sur la documentation officielle de FluxCD : https://fluxcd.io/flux/get-started/
+Egalement pour la partie Gitlab de flux : https://fluxcd.io/flux/installation/bootstrap/gitlab/
+
+### TP 16-1 : Installer FluxCD
+
+**Objectif** : Installer FluxCD sur un cluster Kubernetes
+
+J'installe dans un premier temps `Flux CLI` sur le serveur avec la commande suivante :
+
+```bash
+curl -s https://fluxcd.io/install.sh | sudo bash
+```
+
+![Flux install](media/TP16-1-flux-install.png)
+
+### TP 16-2 : Initialiser le cluster avec un nouveau projet
+
+**Objectif** : Initialiser le cluster avec un nouveau projet FluxCD
+
+Maintenant je créer un nouveau projet gitlab `
+DevOps N2` qui va contenir la configuration de mon cluster k8s
+
+![Gitlab new project](media/TP16-2-gitlab-new.png)
+
+Pour la suite je vais devoir fournir un token d'accès à FluxCD pour qu'il puisse accéder au projet gitlab et y pousser les modifications.
+Je vais donc créer un token d'accès dans Gitlab avec les droits `api` et `write_repository`<br>
+
+*Section : `Paramètres/Jetons d'accès`*
+
+![Gitlab token](media/TP16-2-gitlab-token.png)
+
+Je peux ensuite ajouter le PAT dans mon terminal pour que FluxCD puisse y accéder
+
+```bash
+export GITLAB_TOKEN=<TOKEN_CRÉÉ_PRÉCÉDEMMENT>
+export GITLAB_USER=almosk
+```
+
+Ensuite test que j'ai tout ce qu'il faut avec la commande suivante :
+
+```bash
+flux check --pre
+```
+
+<hr>
+
+#### Point bloquant
+
+La commande précédente m'a renvoyé une erreur :
+
+```bash
+► checking prerequisites
+✗ Kubernetes API call failed: Get "http://localhost:8080/version": dial tcp [::1]:8080: connect: connection refused
+```
+
+Dexu possibilté possible d'après moi :
+
+- le fait d'utiliser `microk8s` qui n'est pas compatible avec `flux check --pre` à cause du kubeconfig qui n'est pas au même endroit<br>
+- l'export de la configuration n'est pas automatique
+
+J'ai donc exporté manuellement la configuration de mon cluster k8s pour tester :
+
+```bash
+export KUBECONFIG=/var/snap/microk8s/current/credentials/client.config
+```
+
+Et j'ai relancé la commande `flux check --pre` qui a fonctionné cette fois-ci.
+
+J'en ai profité pour figer cette manipulation en ajoutant la ligne suivante dans mon `~/.zshrc` :
+
+```bash
+echo "export KUBECONFIG=/var/snap/microk8s/current/credentials/client.config" >> ~/.zshrc
+```
+
+<hr>
+
+Je peux maintenant initialiser le projet FluxCD avec la commande suivante :
+
+```bash
+flux bootstrap gitlab \                                              
+  --owner=$GITLAB_USER \
+  --repository=devops-n2 \
+  --branch=main \  
+  --path=clusters/my-cluster \
+  --personal
+```
+
+![Flux bootstrap](media/TP16-2-flux-bootstrap.png)
+
+Cette commande va créer un répertoire `clusters/my-cluster` dans le projet gitlab, et y ajouter la configuration de FluxCD pour mon cluster k8s.
+
+![Flux bootstrap gitlab](media/TP16-2-flux-bootstrap-gitlab.png)
+
+<br>
+
+Maintenant conformément aux instructions du TP je vais déployer l'application de test `petstore`.
+
+Pour structuré mon prjet, je m'appuyerais sur la documentation : https://fluxcd.io/flux/guides/repository-structure/
+
+Je commence par cloner le projet sur mon PC pour pouvoir y ajouter l'application :
+
+```bash
+git clone git@gitlab.com:almosk/devops-n2.git
+cd devops-n2
+git clone git@github.com:malicktech/petstore-ee7-to-kubernetes.git
+rm -rf petstore-ee7-to-kubernetes/.git # Pour eviter les conflits de git
+```
+
+Ensuite j'ai ajouté un fichier de configuration pour l'application dans les répertoire : 
+
+`clusters/my-cluster/petstore-app.yaml` :
+
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: petstore
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: "./petstore-ee7-to-kubernetes"
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  targetNamespace: petstore
+```
+
+`clusters/my-cluster/petstore-ns.yaml`
+
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: petstore-namespaces
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: "./petstore-ee7-to-kubernetes/namespaces"
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+```
+
+
+
+Et mis à jours le repo :
+
+```bash
+git add .
+git commit -S -m "Add Petstore app"
+git push
+```
+
+![push](media/TP16-2-push.png)
