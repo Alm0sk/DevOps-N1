@@ -34,6 +34,10 @@
   - [TP 16 : fluxcd - gitlab](#tp-16--fluxcd---gitlab)
     - [TP 16-1 : Installer FluxCD](#tp-16-1--installer-fluxcd)
     - [TP 16-2 : Initialiser le cluster avec un nouveau projet](#tp-16-2--initialiser-le-cluster-avec-un-nouveau-projet)
+  - [TP 17 : Final](#tp-17--final)
+    - [TP 17-1 : Déployer un cluster sur Azure](#tp-17-1--déployer-un-cluster-sur-azure)
+    - [TP 17-2 : Installer FluxCD](#tp-17-2--installer-fluxcd)
+    - [TP 17-3 : Initialiser le cluster avec un nouveau projet](#tp-17-3--initialiser-le-cluster-avec-un-nouveau-projet)
 
 <br>
 
@@ -1808,11 +1812,11 @@ Le différent fichier de configuration sont les suivants :
 - [provider.tf](tp17/tp17-1_Cluster-AKS-terraform/provider.tf)
 - [ssh.tf](tp17/tp17-1_Cluster-AKS-terraform/ssh.tf)
 
-*Ils sont accécibles dans le dossier [tp17](tp17)*
+*Ils sont accécibles dans le dossier [tp17/tp17-1_Cluster-AKS-terraform/](tp17/tp17-1_Cluster-AKS-terraform/)*
 
 #### Mise en place
 
-*Toutes les commandes sont à lancer dans le dossier [tp17](tp17)*
+*Toutes les commandes sont à lancer dans le dossier [tp17/tp17-1_Cluster-AKS-terraform/](tp17/tp17-1_Cluster-AKS-terraform/)*
 
 **Initialisation de terraform**
 
@@ -2029,5 +2033,124 @@ Je retrouve également mon cluster dans lens.
 
 Je vais utiliser la documentation de FluxCD pour initialiser le projet gitlab : https://fluxcd.io/flux/installation/bootstrap/gitlab/
 
+**Tout le projet Flux est accessible dans le dossier [TP17-3-fluxcd-gitlab](tp17/tp17-3-fluxcd-gitlab/)**
+
 #### Mise en place
+
+J'ai commencé par créer un nouveau projet gitlab `DevOps-N2-final` qui va contenir la configuration de mon cluster k8s.
+
+![Gitlab new project](media/TP17-3-gitlab-new.png)
+
+Pour la suite je vais devoir fournir un token d'accès à FluxCD pour qu'il puisse accéder au projet gitlab et y pousser les modifications. Je vais donc créer un token d'accès dans Gitlab avec les droits `api` et `write_repository`
+
+Section : *`Paramètres/Jetons d'accès`*
+![Gitlab token](media/TP17-3-gitlab-token.png)
+
+Je peux ensuite ajouter le PAT dans mon terminal pour que FluxCD puisse y accéder
+
+```bash
+export GITLAB_TOKEN=<TOKEN_CRÉÉ_PRÉCÉDEMMENT>
+export GITLAB_USER=almosk
+```
+Ensuite test que j'ai tout ce qu'il faut avec la commande suivante :
+
+```bash
+flux check --pre
+```
+
+![Flux check](media/TP17-3-flux-check.png)
+
+*Contrairement au TP précédent sur minikube, je n'ai pas eu d'erreur de connexion*
+
+Je peux maintenant initialiser le projet FluxCD avec la commande suivante :
+
+```bash
+flux bootstrap gitlab \
+  --owner=$GITLAB_USER \
+  --repository=devops-n2-final \
+  --branch=main \
+  --path=clusters/my-cluster \
+  --personal
+```
+
+Une fois fait, cette commande va créer un répertoire `clusters/my-cluster` dans le projet gitlab, et y ajouter la configuration de FluxCD pour mon cluster k8s.
+
+![Flux bootstrap](media/TP17-3-flux-bootstrap.png)
+
+
+![Flux bootstrap gitlab](media/TP17-3-flux-bootstrap-gitlab.png)
+
+
+Je peux maintenant ajouter la configuration de mon application dans le répertoire `clusters/my-cluster` pour que FluxCD puisse la déployer sur mon cluster.
+Pour cela, je vais cloner le projet gitlab sur ma machine :
+
+*Je vais mettre en place l'application podinfo disponible sur le repo : https://github.com/stefanprodan/podinfo*
+
+```bash
+git clone git@gitlab.com:almosk/devops-n2-final.git
+```
+
+**Ajout du repository de l'application podinfo dans le répertoire `clusters/my-cluster`**
+
+```bash
+flux create source git podinfo \
+  --url=https://github.com/stefanprodan/podinfo \
+  --branch=master \
+  --interval=1m \
+  --export > ./clusters/my-cluster/podinfo-source.yaml
+```
+
+**Mise à jours du projet gitlab**
+
+```bash
+git add -A && git commit -S -m "Add podinfo GitRepository" && git push
+```
+![Gitlab push podinfo](media/TP17-3-gitlab-push-podinfo.png)
+
+**Ajout de la configuration de l'application podinfo dans le répertoire `clusters/my-cluster`**
+
+```bash
+flux create kustomization podinfo \
+  --target-namespace=podinfo \
+  --source=podinfo \
+  --path="./kustomize" \
+  --prune=true \
+  --wait=true \
+  --interval=30m \
+  --retry-interval=2m \
+  --health-check-timeout=3m \
+  --export > ./clusters/my-cluster/podinfo-kustomization.yaml
+```
+**Mise à jours du projet gitlab**
+
+```bash
+git add -A && git commit -S -m "Add podinfo Kustomization" && git push
+```
+![Gitlab push podinfo kustomization](media/TP17-3-gitlab-push-podinfo-kustomization.png)
+
+**Vérification du déploiement de l'application podinfo**
+
+```bash
+kubectl get kustomizations -n podinfo
+```
+
+![Kustomization podinfo](media/TP17-3-kustomization-podinfo.png)
+
+**Accès à l'application podinfo**
+
+Il ne reste plus qu'à accéder à l'application podinfo via le navigateur avec un port-forwarding :
+
+```bash
+kubectl get svc -n podinfo
+```
+
+```bash
+kubectl port-forward svc/podinfo -n podinfo 8080:9898
+```
+
+![Podinfo](media/TP17-3-podinfo-cli.png)
+
+!![Podinfo web](media/TP17-3-podinfo-web.png)
+
+**Tout le projet Flux est accessible dans le dossier [TP17-3-fluxcd-gitlab](tp17/tp17-3-fluxcd-gitlab/)**
 
