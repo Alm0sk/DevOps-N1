@@ -1888,21 +1888,146 @@ Pour installer FluxCD sur le cluster AKS, je vais utiliser la documentation de F
 
 #### Mise en place
 
+
+##### Installation de FluxCD
+
 Je vais d'abord installer FluxCD sur ma machine avec la commande suivante :
 
 ```bash
 curl -s https://fluxcd.io/install.sh | sudo bash
 ```
 
-Ensuite je vais installer `Flux Operator` sur le cluster AKS dans le namespace flux-system avec la commande suivante :
+Ensuite je vais installer `Flux Operator` sur le cluster AKS dans le namespace flux-system.
+
+Pour cela je vais modifier ma configuration terraform pour ajouter FluxCD et son namespace.
+
+*J'ai préféré utiliser terraform pour respecté le principe d'infrastructure as code et pour pouvoir facilement gérer les modifications futures de la configuration de FluxCD; (Egalement pour pouvoir supprimé toutes mes modifications d'azure quand je ne m'en sert pas)*
+
+*Ajout des ressources pour créer le namespace, ainsi que l'installation helm de flux [main.tf](tp17/tp17-1_Cluster-AKS-terraform/main.tf)*
+
+```tf
+resource "kubernetes_namespace" "flux_system" {
+  metadata {
+    name = "flux-system"
+  }
+}
+
+resource "helm_release" "flux_operator" {
+  name             = "flux-operator"
+  namespace        = kubernetes_namespace.flux_system.metadata[0].name
+  repository       = "oci://ghcr.io/controlplaneio-fluxcd/charts"
+  chart            = "flux-operator"
+  create_namespace = false
+  depends_on       = [kubernetes_namespace.flux_system]
+}
+
+resource "helm_release" "flux_instance" {
+  name       = "flux"
+  namespace  = kubernetes_namespace.flux_system.metadata[0].name
+  repository = "oci://ghcr.io/controlplaneio-fluxcd/charts"
+  chart      = "flux-instance"
+  values     = [file("values/components.yaml")]
+  depends_on = [helm_release.flux_operator]
+}
+```
+
+*Ajout des providers pour flux et kubernetes [provider.tf](tp17/tp17-1_Cluster-AKS-terraform/provider.tf)*
+
+```tf
+
+provider "helm" {
+  kubernetes {
+    host                   = azurerm_kubernetes_cluster.k8s.kube_config[0].host
+    client_certificate     = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_certificate)
+    client_key             = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_key)
+    cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].cluster_ca_certificate)
+  }
+}
+
+provider "kubernetes" {
+  host                   = azurerm_kubernetes_cluster.k8s.kube_config[0].host
+  client_certificate     = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_certificate)
+  client_key             = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_key)
+  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].cluster_ca_certificate)
+}
+```
+
+*Enfin, ajout d'un fichier de configuration pour flux [values/components.yaml](tp17/tp17-1_Cluster-AKS-terraform/values/components.yaml)*
+
+```yaml
+instance:
+  components:
+    - source-controller
+    - kustomize-controller
+    - helm-controller
+    - notification-controller
+    - image-reflector-controller
+    - image-automation-controller
+  kustomize:
+    patches:
+      - target:
+          kind: Deployment
+          name: "(kustomize-controller|helm-controller)"
+        patch: |
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --concurrent=10
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --requeue-dependency=10s
+```
+
+*Application de la configuration terraform*
 
 ```bash
-helm install flux-operator oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator \
-  --namespace flux-system \
-  --create-namespace
+terraform apply
 ```
-![Flux Operator](media/TP17-2-flux-operator.png)
 
+*Suppression de la configuration terraform*
+```bash
+terraform destroy
+```
 
+<br><hr>
 
+##### Note
+
+En voulant supprimer ma configuration terraform d'azure, j'ai eu l'erreur suivante :
+
+```bash
+Error: deleting Resource Group "rg-adapting-sloth": the Resource Group still contains Resources.
+```
+
+A cause de la clé SSH que j'ai ajouté dans la configuration terraform, qui n'est pas supprimée automatiquement par terraform.
+
+J'ai donc mis à jours le provier `azurerm` dans le fichier [provider.tf](tp17/tp17-1_Cluster-AKS-terraform/provider.tf) pour la version autoriser la suppression de la ressource groupe même si elle contient des ressources :
+
+```tf
+provider "azurerm" {
+  features {
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+    }
+  }
+}
+```
+
+<hr><br>
+
+Après une `teraform destroy` et un `terraform apply`, pour repartir sur une base saine. J'ai réussi à installer et configurer FluxCD sur mon cluster AKS.
+
+Avec l'avantage de pouvoir facilement déployer ou supprimer ma configuration sur Azure avec Terraform.
+
+![FluxCD AKS](media/TP17-2-fluxcd-aks.png)
+
+Je retrouve également mon cluster dans lens.
+![Lens AKS](media/TP17-2-lens-aks.png)
+
+### TP 17-3 : Initialiser le cluster avec un nouveau projet
+
+**Objectif** : Initialiser le cluster avec un nouveau projet gitlab via FluxCD
+
+Je vais utiliser la documentation de FluxCD pour initialiser le projet gitlab : https://fluxcd.io/flux/installation/bootstrap/gitlab/
+
+#### Mise en place
 

@@ -28,7 +28,7 @@ resource "azurerm_kubernetes_cluster" "k8s" {
 
   default_node_pool {
     name       = "agentpool"
-    vm_size    = "Standard_D4s_v3"  # ← 4 vCPU, 16 Go RAM
+    vm_size    = "Standard_D4s_v3" # ← 4 vCPU, 16 Go RAM
     node_count = var.node_count
   }
   linux_profile {
@@ -42,4 +42,28 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     network_plugin    = "kubenet"
     load_balancer_sku = "standard"
   }
+}
+
+resource "kubernetes_namespace" "flux_system" {
+  metadata {
+    name = "flux-system"
+  }
+}
+
+resource "helm_release" "flux_operator" {
+  name             = "flux-operator"
+  namespace        = kubernetes_namespace.flux_system.metadata[0].name
+  repository       = "oci://ghcr.io/controlplaneio-fluxcd/charts"
+  chart            = "flux-operator"
+  create_namespace = false
+  depends_on       = [kubernetes_namespace.flux_system]
+}
+
+resource "helm_release" "flux_instance" {
+  name       = "flux"
+  namespace  = kubernetes_namespace.flux_system.metadata[0].name
+  repository = "oci://ghcr.io/controlplaneio-fluxcd/charts"
+  chart      = "flux-instance"
+  values     = [file("values/components.yaml")]
+  depends_on = [helm_release.flux_operator]
 }
