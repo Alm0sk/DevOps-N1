@@ -35,9 +35,10 @@
     - [TP 16-1 : Installer FluxCD](#tp-16-1--installer-fluxcd)
     - [TP 16-2 : Initialiser le cluster avec un nouveau projet](#tp-16-2--initialiser-le-cluster-avec-un-nouveau-projet)
   - [TP 17 : Final](#tp-17--final)
-    - [TP 17-1 : Déployer un cluster sur Azure](#tp-17-1--déployer-un-cluster-sur-azure)
+    - [TP 17-1 : Déployer un cluster sur Azure](#tp-17-1--d%C3%A9ployer-un-cluster-sur-azure)
     - [TP 17-2 : Installer FluxCD](#tp-17-2--installer-fluxcd)
-    - [TP 17-3 : Initialiser le cluster avec un nouveau projet](#tp-17-3--initialiser-le-cluster-avec-un-nouveau-projet)
+    - [TP 17-3-1 : Initialiser le cluster avec podinfo](#tp-17-3-1--initialiser-le-cluster-avec-un-nouveau-projet-podinfo)
+    - [TP 17-3-2 : Initialiser le cluster avec petstore](#tp-17-3-2--initialiser-le-cluster-avec-un-nouveau-projet-petstore)
 
 <br>
 
@@ -2214,7 +2215,7 @@ J'ai ensuite ajouté la configuration de l'application petstore dans le réperto
 
 <hr>
 
-J'ai du mettre en place les images docker de l'application sur mon compte docker hub : https://hub.docker.com/u/akitaipi
+J'ai réutilisé les images docker que j'avais mis sur mon dockerhub pour la même application au TP précédent : https://hub.docker.com/u/akitaipi
 
 ```bash
 docker build -t akitaipi/petstore:1.0 . && \
