@@ -1790,3 +1790,119 @@ git push
 ```
 
 ![push](media/TP16-2-push.png)
+
+## TP 17 : Final
+
+### TP 17-1 : Déployer un cluster sur Azure
+
+**Objectif** : Déployer un cluster avec azure student et connecter vous sur le context
+
+Je vais utiliser terraform pour déployer un cluster k8s sur Azure via le service AKS (Azure Kubernetes Service).
+J'ai donc mis en place la configuration dans le fichier [main.tf](tp17/tp17-1_Cluster-AKS-terraform/main.tf) en me basant sur la documentation de Microsoft : <https://learn.microsoft.com/en-us/azure/aks/learn/quick-kubernetes-deploy-terraform?pivots=development-environment-azure-cli>
+
+Le différent fichier de configuration sont les suivants :
+
+- [main.tf](tp17/tp17-1_Cluster-AKS-terraform/main.tf)
+- [variables.tf](tp17/tp17-1_Cluster-AKS-terraform/variables.tf)
+- [outputs.tf](tp17/tp17-1_Cluster-AKS-terraform/outputs.tf)
+- [provider.tf](tp17/tp17-1_Cluster-AKS-terraform/provider.tf)
+- [ssh.tf](tp17/tp17-1_Cluster-AKS-terraform/ssh.tf)
+
+*Ils sont accécibles dans le dossier [tp17](tp17)*
+
+#### Mise en place
+
+*Toutes les commandes sont à lancer dans le dossier [tp17](tp17)*
+
+**Initialisation de terraform**
+
+```bash
+terraform init -upgrade
+```
+
+**Mise en forme de la configuration**
+
+```bash
+terraform fmt
+```
+
+**Appliquer la configuration**
+
+```bash
+terraform apply
+```
+
+<br><hr>
+
+**Modification par rapport à la documentation**
+
+Dans le ficher [variables.tf](tp17/tp17-1_Cluster-AKS-terraform/variables.tf) j'ai modifié la variable `resource_group_location` pour la passer de `eastus` à `francecentral` pour rapprocher le cluster de ma position en France.<br>
+
+Toujours dans le fichier [variables.tf](tp17/tp17-1_Cluster-AKS-terraform/variables.tf) j'ai modifié la variable `node_count` pour la passer de `3` à `1` pour économiser les ressouces<br>
+
+J'ai changer la `vm_size` dans [main.tf](tp17/tp17-1_Cluster-AKS-terraform/main.tf) pour la passer de `Standard_DS2_v2` à `Standard_D4s_v3` pour économiser les ressources et l'argent.<br>
+
+J'utilise également le provider tls plutôt que azapi pour gérer le ssh.
+
+Suite à ses modifications et plusieurs tests, j'ai réussi à déployer le cluster k8s sur Azure.
+
+<hr><br>
+
+Après un petite (longue) attente, le cluster est déployé 
+
+**Démonstration**
+
+*CLI*<br>
+![Terraform configuration](media/TP17-1-terraform.png)
+
+*Portail Azure Web*<br>
+![Azure Web](media/TP17-1-azure-web.png)
+
+Je peux m'y connecter en suivant les commandes de connexion à kubectl fournies par Azure sur la page du cluster AKS :
+
+*A noter que je me suis déjà connecté à Azure en cli avec la commande `az login` dans un précédent TP*
+
+*Connexion au cluster*
+```bash
+az aks get-credentials --resource-group rg-adapting-sloth --name cluster-evolving-giraffe --overwrite-existing
+```
+
+*Vérification de la connexion*
+```bash
+kubectl get deployments --all-namespaces=true
+```
+
+![Connexion au cluster](media/TP17-1-kubectl.png)
+
+<br>
+
+Le lien avec l'outil cli kubernetes que j'utilise habituellement `k9s` est également automatiquement créé, je peux donc l'utiliser pour gérer le cluster.
+![K9s](media/TP17-1-k9s.png)
+
+
+### TP 17-2 : Installer FluxCD
+
+**Objectif** : Installer FluxCD sur le cluster AKS
+
+Pour installer FluxCD sur le cluster AKS, je vais utiliser la documentation de FluxCD : https://fluxcd.io/flux/installation/
+
+#### Mise en place
+
+Je vais d'abord installer FluxCD sur ma machine avec la commande suivante :
+
+```bash
+curl -s https://fluxcd.io/install.sh | sudo bash
+```
+
+Ensuite je vais installer `Flux Operator` sur le cluster AKS dans le namespace flux-system avec la commande suivante :
+
+```bash
+helm install flux-operator oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator \
+  --namespace flux-system \
+  --create-namespace
+```
+![Flux Operator](media/TP17-2-flux-operator.png)
+
+
+
+
