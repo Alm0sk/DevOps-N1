@@ -1746,54 +1746,76 @@ git clone git@github.com:malicktech/petstore-ee7-to-kubernetes.git
 rm -rf petstore-ee7-to-kubernetes/.git # Pour eviter les conflits de git
 ```
 
-Ensuite j'ai ajouté un fichier de configuration pour l'application dans les répertoire : 
 
-`clusters/my-cluster/petstore-app.yaml` :
+J'ai ajouté un repertoire `apps/petstore` à la racine du projet qui contient la configuration kubernetes de l'application petstore.
+*J'ai utilisé la configuration de l'application petstore disponible dans le projet gitlab : <https://github.com/malicktech/petstore-ee7-to-kubernetes/tree/master>*
 
-```yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
-kind: Kustomization
-metadata:
-  name: petstore
-  namespace: flux-system
-spec:
-  interval: 5m
-  path: "./petstore-ee7-to-kubernetes"
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  targetNamespace: petstore
-```
+- [deployment.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/deployment.yaml)
+- [namespace.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/namespace.yaml)
+- [service.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/service.yaml)
+- [ingress.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/ingress.yaml)
 
-`clusters/my-cluster/petstore-ns.yaml`
+*(Comme j'ai réutilisé la même config pour le tp17, j'ai mis ma documentation dans son repertoire pour ne pas avoir deux fois la même chose : [Dossier_configuration](tp17/tp17-3-fluxcd-gitlab))*
 
-```yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
-kind: Kustomization
-metadata:
-  name: petstore-namespaces
-  namespace: flux-system
-spec:
-  interval: 5m
-  path: "./petstore-ee7-to-kubernetes/namespaces"
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-```
+<br>
+J'ai ensuite ajouté la configuration de l'application petstore dans le répertoire `clusters/my-cluster` pour que FluxCD puisse la déployer sur mon cluster.
 
+- [petstore-kustomization.yaml](tp17/tp17-3-fluxcd-gitlab/clusters/my-cluster/petstore-kustomization.yaml)
+- [petstore-source.yaml](tp17/tp17-3-fluxcd-gitlab/clusters/my-cluster/petstore-source.yaml)
 
-
-Et mis à jours le repo :
+Après mon premier push, je me suis rendu compte que il faut hébergé les images docker de l'application. J'ai donc mis en place les images docker de l'application sur mon compte docker hub : <https://hub.docker.com/u/akitaipi>
 
 ```bash
-git add .
-git commit -S -m "Add Petstore app"
-git push
+docker build -t akitaipi/petstore:1.0 . && \
+docker push akitaipi/petstore:1.0 && \
+cd front && \
+docker build -t akitaipi/petstore-front:1.0 . && \
+docker push akitaipi/petstore-front:1.0
 ```
 
-![push](media/TP16-2-push.png)
+![Docker Hub](media/TP17-3-docker-hub.png)
+
+Ensuite j'ai modifié les fichiers de configuration de l'application petstore pour utiliser les images docker hébergées sur mon compte docker hub.
+
+Il ne me reste plus qu'à créer le namespace `petstore` dans le cluster AKS pour que FluxCD puisse déployer l'application petstore.
+
+```bash
+kubectl create namespace petstore
+```
+
+#### Déploiement de l'application petstore
+
+Grâce à la configuration de FluxCD, l'application petstore est automatiquement déployée sur le cluster AKS après un push :
+
+```bash
+git add -A && git commit -S -m "Add petstore app" && git push
+```
+
+**Vérification du déploiement de l'application petstore**
+
+```bash
+kubectl get kustomizations -n flux-system
+```
+
+```bash
+kubectl get pods -n petstore
+```
+
+![Kustomization petstore](media/TP17-3-kustomization-petstore.png)
+
+**Accès à l'application petstore**
+Il ne reste plus qu'à accéder à l'application petstore via le navigateur avec un port-forwarding :
+
+```bash
+kubectl get svc -n petstore
+```
+
+```bash
+kubectl port-forward svc/petstore -n petstore 8080:80
+```
+
+![Petstore](media/TP17-3-petstore-web.png)
+
 
 ## TP 17 : Final
 
@@ -2027,13 +2049,17 @@ Avec l'avantage de pouvoir facilement déployer ou supprimer ma configuration su
 Je retrouve également mon cluster dans lens.
 ![Lens AKS](media/TP17-2-lens-aks.png)
 
-### TP 17-3 : Initialiser le cluster avec un nouveau projet
+### TP 17-3-1 : Initialiser le cluster avec un nouveau projet [podinfo]
 
 **Objectif** : Initialiser le cluster avec un nouveau projet gitlab via FluxCD
+
+Pour changer un peu du TP précédent, je vais déployer cette fois le projet `podinfoè qui est mis en avant dans la documentation de FluxCD. *J'initialiserais ensuite le projet petstore*
 
 Je vais utiliser la documentation de FluxCD pour initialiser le projet gitlab : https://fluxcd.io/flux/installation/bootstrap/gitlab/
 
 **Tout le projet Flux est accessible dans le dossier [TP17-3-fluxcd-gitlab](tp17/tp17-3-fluxcd-gitlab/)**
+
+###
 
 #### Mise en place
 
@@ -2154,3 +2180,89 @@ kubectl port-forward svc/podinfo -n podinfo 8080:9898
 
 **Tout le projet Flux est accessible dans le dossier [TP17-3-fluxcd-gitlab](tp17/tp17-3-fluxcd-gitlab/)**
 
+
+### TP 17-3-2 : Initialiser le cluster avec un nouveau projet [petstore]
+
+**Objectif** : Ajouter le projet petstore dans le projet gitlab FluxCD
+
+#### Mise en place
+
+J'ai modifier le projet gitlab `DevOps-N2-final` pour y ajouter le projet petstore.
+
+On passe de : <br>
+![Flux bootstrap gitlab](media/TP17-3-flux-bootstrap-gitlab.png)<br>
+<br>à :<br><br>
+![Flux bootstrap gitlab petstore](media/TP17-3-flux-bootstrap-gitlab-petstore.png)
+
+J'ai ajouté un repertoire `apps/petstore` à la racine du projet qui contient la configuration kubernetes de l'application petstore.
+*J'ai utilisé la configuration de l'application petstore disponible dans le projet gitlab : https://github.com/malicktech/petstore-ee7-to-kubernetes/tree/master*
+
+- [deployment.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/deployment.yaml)
+- [namespace.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/namespace.yaml)
+- [service.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/service.yaml)
+- [ingress.yaml](tp17/tp17-3-fluxcd-gitlab/apps/petstore/ingress.yaml)
+
+<br>
+J'ai ensuite ajouté la configuration de l'application petstore dans le répertoire `clusters/my-cluster` à l'instar de `podinfo` pour que FluxCD puisse la déployer sur mon cluster.
+
+- [petstore-kustomization.yaml](tp17/tp17-3-fluxcd-gitlab/clusters/my-cluster/petstore-kustomization.yaml)
+- [petstore-source.yaml](tp17/tp17-3-fluxcd-gitlab/clusters/my-cluster/petstore-source.yaml)
+
+<hr>
+
+**Tout le projet Flux est accessible dans le dossier [TP17-3-fluxcd-gitlab](tp17/tp17-3-fluxcd-gitlab/)**
+
+<hr>
+
+J'ai du mettre en place les images docker de l'application sur mon compte docker hub : https://hub.docker.com/u/akitaipi
+
+```bash
+docker build -t akitaipi/petstore:1.0 . && \
+docker push akitaipi/petstore:1.0 && \
+cd front && \
+docker build -t akitaipi/petstore-front:1.0 . && \
+docker push akitaipi/petstore-front:1.0
+```
+
+![Docker Hub](media/TP17-3-docker-hub.png)
+
+Ensuite j'ai modifié les fichiers de configuration de l'application petstore pour utiliser les images docker hébergées sur mon compte docker hub.
+
+Il ne me reste plus qu'à créer le namespace `petstore` dans le cluster AKS pour que FluxCD puisse déployer l'application petstore.
+
+```bash
+kubectl create namespace petstore
+```
+
+#### Déploiement de l'application petstore
+
+Grâce à la configuration de FluxCD, l'application petstore est automatiquement déployée sur le cluster AKS après un push :
+
+```bash
+git add -A && git commit -S -m "Add petstore app" && git push
+```
+
+**Vérification du déploiement de l'application petstore**
+
+```bash
+kubectl get kustomizations -n flux-system
+```
+
+```bash
+kubectl get pods -n petstore
+```
+
+![Kustomization petstore](media/TP17-3-kustomization-petstore.png)
+
+**Accès à l'application petstore**
+Il ne reste plus qu'à accéder à l'application petstore via le navigateur avec un port-forwarding :
+
+```bash
+kubectl get svc -n petstore
+```
+
+```bash
+kubectl port-forward svc/petstore -n petstore 8080:80
+```
+
+![Petstore](media/TP17-3-petstore-web.png)

@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petstore
+  namespace: petstore-development
+  #annotations:
+    #sidecar.istio.io/inject: false
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: petstore
+  template:
+    metadata:
+      labels:
+        app: petstore
+    spec:
+      containers:
+      - name: front
+        image: akitaipi/petstore-front:1.0
+        imagePullPolicy: IfNotPresent
+      - name: petstore
+        image: akitaipi/petstore:1.0
+        imagePullPolicy: IfNotPresent

@@ -1,0 +1,15 @@
+# https://kubernetes.io/fr/docs/concepts/services-networking/service/
+# internal service accessible only in cluster 
+apiVersion: v1
+kind: Service
+metadata:
+  name: petstore
+  namespace: petstore
+spec:
+  selector:
+    app: petstore
+  #type: ClusterIP    
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

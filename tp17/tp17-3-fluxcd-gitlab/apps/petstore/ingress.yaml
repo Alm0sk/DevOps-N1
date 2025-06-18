@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: petstore-ingress
+  namespace: petstore
+spec:
+  rules:
+  - host: petstore.lol
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: petstore
+            port:
+              number: 80
